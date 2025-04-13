@@ -6,6 +6,7 @@
 	import { getProfileImageUrl } from '$lib/firebase/client';
 	import { fade, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 
 	let { children } = $props();
 	
@@ -14,6 +15,11 @@
 		
 		// Add overflow-hidden to body to prevent scrollbars
 		document.body.classList.add('overflow-x-hidden');
+		
+		// If on the root page, automatically redirect to dashboard
+		if ($page.url.pathname === '/') {
+			goto('/dashboard');
+		}
 	});
 	
 	// Check if current page is a public page (landing, login, or onboarding)
