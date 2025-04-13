@@ -2,21 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeAdminApp } from '$lib/firebase/admin';
 
-// Initialize Firebase Admin if not already initialized
-if (getApps().length === 0) {
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n') || 
-                     import.meta.env.VITE_FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-                     
-  initializeApp({
-    credential: cert({
-      projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      clientEmail: import.meta.env.VITE_FIREBASE_CLIENT_EMAIL,
-      privateKey
-    })
-  });
-}
+// Initialize Firebase Admin once
+initializeAdminApp();
 
 export const POST = async ({ request }: RequestEvent) => {
   try {
@@ -27,7 +16,12 @@ export const POST = async ({ request }: RequestEvent) => {
     }
     
     // Verify the ID token
-    await getAuth().verifyIdToken(idToken);
+    try {
+      await getAuth().verifyIdToken(idToken);
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      return json({ error: 'Invalid authentication token' }, { status: 401 });
+    }
     
     // Delete user data from Firestore
     const db = getFirestore();
@@ -46,7 +40,13 @@ export const POST = async ({ request }: RequestEvent) => {
     await batch.commit();
     
     // Delete the user authentication account
-    await getAuth().deleteUser(userId);
+    try {
+      await getAuth().deleteUser(userId);
+    } catch (authError) {
+      console.error('Error deleting auth user:', authError);
+      // Continue with the process even if auth deletion fails
+      // The client will handle sign out
+    }
     
     return json({ success: true });
   } catch (error) {

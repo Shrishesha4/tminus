@@ -4,11 +4,12 @@
 	import { goto } from '$app/navigation';
 	import { db } from '$lib/firebase/client';
 	import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-	import { deleteUser } from 'firebase/auth';
+	import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
 	import { getProfileImageUrl } from '$lib/firebase/client';
 	import { signOut } from '$lib/services/authService';
-    import { auth } from '$lib/firebase/client';
+	import { auth } from '$lib/firebase/client';
 	import { getIdToken } from 'firebase/auth';
+	import { DEFAULT_LIFE_EXPECTANCY } from '$lib/utils/timeUtils';
 
 	let userData: any = null;
 	let isLoadingData = true;
@@ -22,12 +23,13 @@
 	let displayName = '';
 	let birthdate = '';
 	let birthTime = '';
+	let lifeExpectancy = 75; // Default value
 
 	// Add a timeout to prevent infinite loading
 	let loadingTimeout: ReturnType<typeof setTimeout>;
 
 	onMount(() => {
-		console.log("Profile mounted, user:", $user?.uid || "null", "isLoading:", $isLoading);
+		// console.log("Profile mounted, user:", $user?.uid || "null", "isLoading:", $isLoading);
 		
 		// Set a timeout to prevent infinite loading
 		loadingTimeout = setTimeout(() => {
@@ -74,6 +76,7 @@
 					displayName = $user.displayName || '';
 					birthdate = userData.birthdate || '';
 					birthTime = userData.birthTime || '';
+					lifeExpectancy = userData.lifeExpectancy || 75; // Load custom life expectancy if set
 				} else {
 					goto('/onboarding');
 				}
@@ -93,6 +96,12 @@
 			return;
 		}
 		
+		// Validate life expectancy
+		if (lifeExpectancy < 1 || lifeExpectancy > 150) {
+			error = 'Life expectancy must be between 1 and 150 years';
+			return;
+		}
+		
 		isSaving = true;
 		error = '';
 		success = '';
@@ -102,6 +111,7 @@
 				await updateDoc(doc(db, 'users', $user.uid), {
 					birthdate,
 					birthTime: birthTime || null,
+					lifeExpectancy: Number(lifeExpectancy), // Store as number
 					updatedAt: new Date()
 				});
 				
@@ -116,19 +126,25 @@
 		}
 	}
 
-		async function handleDeleteAccount() {
-			if (!showDeleteConfirm) {
-				showDeleteConfirm = true;
-				return;
-			}
-			
-			isDeleting = true;
-			error = '';
-			
-			try {
-				if ($user) {
-					// Get the current user's ID token
-					const idToken = auth.currentUser ? await getIdToken(auth.currentUser) : null; // Use auth here with null check
+	async function handleDeleteAccount() {
+		if (!showDeleteConfirm) {
+			showDeleteConfirm = true;
+			return;
+		}
+		
+		isDeleting = true;
+		error = '';
+		
+		try {
+			if ($user) {
+				try {
+					// Re-authenticate the user before deletion
+					const provider = new GoogleAuthProvider();
+					if (!auth.currentUser) throw new Error('User not authenticated');
+					await reauthenticateWithPopup(auth.currentUser, provider);
+					
+					// Get the current user's ID token (which will now be fresh)
+					const idToken = auth.currentUser ? await getIdToken(auth.currentUser) : null;
 					
 					// Call the server-side API to delete the account
 					const response = await fetch('/api/user/delete', {
@@ -147,10 +163,9 @@
 					}
 					
 					// If server-side deletion fails, try client-side deletion as fallback
-					// This uses the deleteUser import
 					try {
 						if (auth.currentUser) {
-							await deleteUser(auth.currentUser); // Use deleteUser here
+							await deleteUser(auth.currentUser);
 						}
 					} catch (err) {
 						console.log('Client-side deletion skipped, already handled by server');
@@ -159,18 +174,31 @@
 					// Sign out and redirect
 					await signOut();
 					goto('/');
+				} catch (authErr) {
+					// Handle re-authentication errors specifically
+					if ((authErr as { code?: string }).code === 'auth/cancelled-popup-request' ||
+							(authErr as { code?: string }).code === 'auth/popup-closed-by-user') {
+						error = 'Authentication cancelled. Please try again to confirm account deletion.';
+					} else {
+						error = 'Authentication required. Please try again to confirm account deletion.';
+					}
+					console.error('Auth error during account deletion:', authErr);
+					isDeleting = false;
+					return;
 				}
-			} catch (err) {
-				error = 'Failed to delete your account. Please try again.';
-				console.error(err);
-				isDeleting = false;
-				showDeleteConfirm = false;
 			}
-		}
-
-		function cancelDelete() {
+		} catch (err) {
+			error = 'Failed to delete your account. Please try again.';
+			console.error('Account deletion error:', err);
+		} finally {
+			isDeleting = false;
 			showDeleteConfirm = false;
 		}
+	}
+
+	function cancelDelete() {
+		showDeleteConfirm = false;
+	}
 
 	async function handleSignOut() {
 		try {
@@ -193,7 +221,7 @@
 	}
 </script>
 
-<div>
+<div class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 	<h1 class="text-3xl font-bold mb-8">Your Profile</h1>
 	
 	{#if error}
@@ -281,24 +309,27 @@
 						<label for="displayName" class="block text-sm font-medium text-gray-700 mb-1">
 							Display Name
 						</label>
+						<p class="text-xs text-gray-500 mb-2">
+							Your display name is managed through your Google account
+						</p>
 						<input
 							type="text"
 							id="displayName"
 							bind:value={displayName}
-							disabled={true}
-							class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-500"
+							disabled
+							class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100"
 						/>
-						<p class="text-xs text-gray-500 mt-1">Display name can only be changed through your Google account</p>
 					</div>
 					
 					<div>
 						<label for="birthdate" class="block text-sm font-medium text-gray-700 mb-1">
-							Birthdate (required)
+							Birthdate <span class="text-red-500">*</span>
 						</label>
 						<input
 							type="date"
 							id="birthdate"
 							bind:value={birthdate}
+							required
 							class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
 						/>
 					</div>
@@ -315,14 +346,34 @@
 						/>
 					</div>
 					
-					<div class="pt-4">
+					<!-- New Life Expectancy field -->
+					<div>
+						<label for="lifeExpectancy" class="block text-sm font-medium text-gray-700 mb-1">
+							Life Expectancy (years)
+						</label>
+						<div class="flex items-center">
+							<input
+								type="number"
+								id="lifeExpectancy"
+								bind:value={lifeExpectancy}
+								min="1"
+								max="150"
+								class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+							/>
+						</div>
+						<p class="text-xs text-gray-500 mt-1">
+							This setting affects how your remaining time is calculated
+						</p>
+					</div>
+					
+					<div class="flex justify-end">
 						<button
 							type="submit"
+							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
 							disabled={isSaving}
-							class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400"
 						>
 							{#if isSaving}
-								<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+								<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
 									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
 									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
 								</svg>
@@ -333,48 +384,101 @@
 						</button>
 					</div>
 				</form>
+			</div>
+			
+			<div class="bg-white p-6 rounded-lg shadow md:col-span-3 mt-8">
+				<h2 class="text-xl font-semibold mb-4">Support the Creator</h2>
+				<p class="text-gray-600 mb-4">
+					If you find T-Minus helpful in your life journey, please consider supporting the ongoing development and maintenance of this app.
+				</p>
 				
-				<div class="mt-12 pt-8 border-t border-gray-200">
-					<h3 class="text-lg font-medium text-red-600 mb-4">Danger Zone</h3>
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+					<a 
+						href="https://www.buymeacoffee.com/shrishesha4" 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="flex flex-col items-center p-4 border border-yellow-200 rounded-lg bg-yellow-50 hover:bg-yellow-100 transition-colors"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-yellow-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+						</svg>
+						<span class="font-medium">Buy Me a Coffee</span>
+						<span class="text-sm text-gray-500 mt-1">One-time support</span>
+					</a>
 					
-					{#if showDeleteConfirm}
-						<div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
-							<p class="text-sm text-red-700 mb-4">
-								Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.
-							</p>
-							<div class="flex space-x-3">
-								<button
-									on:click={handleDeleteAccount}
-									disabled={isDeleting}
-									class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400"
-								>
-									{#if isDeleting}
-										<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-										</svg>
-										Deleting...
-									{:else}
-										Yes, Delete My Account
-									{/if}
-								</button>
-								<button
-									on:click={cancelDelete}
-									class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-								>
-									Cancel
-								</button>
-							</div>
-						</div>
-					{:else}
-						<button
-							on:click={handleDeleteAccount}
-							class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-						>
-							Delete Account
-						</button>
-					{/if}
+					<a 
+						href="https://www.shrishesha.online" 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="flex flex-col items-center p-4 border border-red-200 rounded-lg bg-red-50 hover:bg-red-100 transition-colors"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						</svg>
+						<span class="font-medium">Visit my Website</span>
+						<span class="text-sm text-gray-500 mt-1">Get to know me!</span>
+					</a>
+					
+					<!-- <a 
+						href="https://github.com/tminusapp/tminus" 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="flex flex-col items-center p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-700 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+						</svg>
+						<span class="font-medium">Contribute Code</span>
+						<span class="text-sm text-gray-500 mt-1">Open source project</span>
+					</a> -->
 				</div>
+				
+				<div class="mt-6 text-center text-sm text-gray-500">
+					Your support helps keep this project alive and enables new features to be developed.
+					<br>Thank you for being part of the T-Minus journey!
+				</div>
+			</div>
+			
+			<div class="mt-4 pt-8 border-t border-gray-200">
+				<h3 class="text-lg font-medium text-red-600 mb-4">Danger Zone</h3>
+				
+				{#if showDeleteConfirm}
+					<div class="bg-red-50 border border-red-200 rounded-md p-4 mb-4">
+						<p class="text-sm text-red-700 mb-4">
+							Are you sure you want to delete your account? This action cannot be undone and will permanently delete all your data.
+						</p>
+						<div class="flex space-x-3">
+							<button
+								on:click={handleDeleteAccount}
+								disabled={isDeleting}
+								class="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:bg-red-400"
+							>
+								{#if isDeleting}
+									<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									Deleting...
+								{:else}
+									Yes, Delete My Account
+								{/if}
+							</button>
+							<button
+								on:click={cancelDelete}
+								class="inline-flex items-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				{:else}
+					<button
+						on:click={handleDeleteAccount}
+						class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+					>
+						Delete Account
+					</button>
+				{/if}
 			</div>
 		</div>
 	{/if}

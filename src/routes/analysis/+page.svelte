@@ -15,7 +15,7 @@
 	let loadingTimeout: ReturnType<typeof setTimeout>;
 	
 	onMount(() => {
-		console.log("Analysis mounted, user:", $user?.uid || "null", "isLoading:", $isLoading);
+		// console.log("Analysis mounted, user:", $user?.uid || "null", "isLoading:", $isLoading);
 		
 		// Set a timeout to prevent infinite loading
 		loadingTimeout = setTimeout(() => {
@@ -87,8 +87,8 @@
 	}
 </script>
 
-<div>
-	<h1 class="text-3xl font-bold mb-8">Journal Analysis</h1>
+<div class="flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+	<h1 class="text-3xl font-bold mb-8">Your Analysis</h1>
 	
 	{#if error}
 		<div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -140,10 +140,38 @@
 		{#if analysis}
 			<div class="bg-white p-6 rounded-lg shadow">
 				<h2 class="text-xl font-semibold mb-4">AI Analysis</h2>
-				<div class="prose max-w-none">
-					{@html analysis.html || analysis.text}
+				
+				<div class="space-y-6">
+				<!-- Summary section -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 mb-2">Summary</h3>
+					<p class="text-gray-700">{analysis.summary}</p>
+				</div>
+				
+				<!-- Insights section -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 mb-2">Key Insights</h3>
+					<ul class="list-disc pl-5 space-y-1">
+					{#each analysis.insights || [] as insight}
+						<li class="text-gray-700">{insight}</li>
+					{/each}
+					</ul>
+				</div>
+				
+				<!-- Sentiment section -->
+				<div>
+					<h3 class="text-lg font-medium text-gray-900 mb-2">Overall Sentiment</h3>
+					<div class="flex items-center">
+					<span class="px-2.5 py-0.5 rounded-full text-sm font-medium
+						{analysis.sentiment === 'positive' ? 'bg-green-100 text-green-800' : 
+						analysis.sentiment === 'negative' ? 'bg-red-100 text-red-800' : 
+						'bg-gray-100 text-gray-800'}">
+						{analysis.sentiment || 'Unknown'}
+					</span>
+					</div>
+				</div>
 				</div>
 			</div>
-		{/if}
+			{/if}
 	{/if}
 </div>

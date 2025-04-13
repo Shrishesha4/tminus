@@ -11,14 +11,14 @@ export function initAuth() {
   
   // Set a shorter timeout
   const authTimeout = setTimeout(() => {
-    console.log("Auth timeout reached, setting isLoading to false");
+    // console.log("Auth timeout reached, setting isLoading to false");
     isLoading.set(false);
   }, 3000); // 3 seconds timeout
   
   // The rest of your auth state change handler
   onAuthStateChanged(auth, async (currentUser) => {
     try {
-      console.log("Auth state changed, user:", currentUser?.uid || "null");
+      // console.log("Auth state changed, user:", currentUser?.uid || "null");
       clearTimeout(authTimeout); // Clear the timeout if auth resolves
       
       if (currentUser) {
@@ -29,6 +29,7 @@ export function initAuth() {
           displayName: currentUser.displayName,
           photoURL: currentUser.photoURL
         }));
+
         
         user.set(currentUser);
         
@@ -42,7 +43,7 @@ export function initAuth() {
       // Still set the user even if there's an error
       if (currentUser) user.set(currentUser);
     } finally {
-      console.log("Auth initialization complete, setting isLoading to false");
+      console.log("Auth initialization complete");
       isLoading.set(false);
     }
   });
@@ -79,13 +80,15 @@ export async function signOut() {
   }
 }
 
-export async function saveBirthdate(userId: string, birthdate: string, birthTime?: string) {
+export async function saveBirthdate(userId: string, birthdate: string, birthTime?: string, lifeExpectancy?: number) {
   try {
     await setDoc(doc(db, 'users', userId), {
       birthdate,
       birthTime: birthTime || null,
-      createdAt: new Date()
-    }, { merge: true });
+      lifeExpectancy: lifeExpectancy || 75, // Default to 75 if not provided
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
   } catch (error) {
     console.error('Error saving birthdate:', error);
     throw error;
