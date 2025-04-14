@@ -84,3 +84,34 @@ export function formatDate(date: Date) {
     day: 'numeric'
   });
 }
+
+/**
+ * Format a Firestore timestamp for display
+ * @param timestamp Firestore timestamp object
+ * @returns Formatted date string
+ */
+export function formatFirestoreTimestamp(timestamp: any) {
+  if (!timestamp) return 'N/A';
+  
+  // Check if it's a Firestore Timestamp object
+  if (timestamp && typeof timestamp.toDate === 'function') {
+    return formatDateTime(timestamp.toDate());
+  }
+  
+  // If it's already a Date object
+  if (timestamp instanceof Date) {
+    return formatDateTime(timestamp);
+  }
+  
+  // If it's a timestamp in seconds or milliseconds
+  if (typeof timestamp === 'number') {
+    return formatDateTime(new Date(timestamp));
+  }
+  
+  // If it's an ISO string
+  if (typeof timestamp === 'string') {
+    return formatDateTime(new Date(timestamp));
+  }
+  
+  return 'Invalid date';
+}

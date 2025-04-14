@@ -155,7 +155,7 @@
           title={sphere.isCurrentPeriod ? `Log journal for current ${viewMode.slice(0, -1)}` : `${sphere.count} ${viewMode.slice(0, -1)}s remaining`}
         >
           <!-- Display the remaining count instead of index+1 -->
-          <span class={`text-xs ${sphere.isCurrentPeriod ? 'text-white' : 'text-gray-700'} font-medium`}>
+          <span class={`text-xs ${sphere.isCurrentPeriod ? 'text-white' : 'text-gray-600'} font-medium`}>
             <!-- {#if sphere.count % 10 === 1 && sphere.count % 100 !== 11}
               st
             {:else if sphere.count % 10 === 2 && sphere.count % 100 !== 12}
@@ -165,7 +165,7 @@
             {:else}
               th
             {/if} -->
-            {#if viewMode === 'years'}
+            <!-- {#if viewMode === 'years'}
                {sphereNumber[3]}
             {:else if viewMode === 'months'}
                {sphereNumber[2]} 
@@ -173,7 +173,7 @@
                {sphereNumber[1]}
             {:else}
                {sphereNumber[0]}
-            {/if}
+            {/if} -->
             {sphere.count}
 
             

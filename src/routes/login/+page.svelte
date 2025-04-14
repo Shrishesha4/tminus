@@ -52,15 +52,19 @@
 	}
 </script>
 
-<!-- Background gradient elements -->
-<div class="absolute inset-0 overflow-hidden">
-	<div class="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] bg-indigo-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
-	<div class="absolute -bottom-1/4 -right-1/4 w-[150%] h-[150%] bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70"></div>
+<!-- Animated gradient background -->
+<div class="fixed inset-0 z-0 overflow-hidden">
+  <div class="absolute inset-0 bg-gradient-to-br from-blue-500 via-white to-purple-600 animate-gradient-background"></div>
+  <div class="absolute inset-0 opacity-30">
+    <div class="absolute top-0 -left-1/4 w-1/2 h-1/2 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob"></div>
+    <div class="absolute top-1/4 -right-1/4 w-1/2 h-1/2 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-2000"></div>
+    <div class="absolute -bottom-1/4 left-1/4 w-1/2 h-1/2 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl animate-blob animation-delay-4000"></div>
+  </div>
 </div>
-<div class="flex-1 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
 
+<div class="flex-1 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 relative z-10">
 	<div class="z-10 max-w-md w-full" in:fade={{ duration: 800 }}>
-		<div class="bg-white py-10 px-8 shadow-xl rounded-2xl">
+		<div class="bg-white/90 backdrop-blur-sm py-10 px-8 shadow-xl rounded-2xl">
 			<div class="text-center mb-8">
 				<h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome to T-Minus</h1>
 				<p class="text-gray-600">Sign in to track your journey</p>
