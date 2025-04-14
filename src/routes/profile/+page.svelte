@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { user, isLoading } from '$lib/stores/authStore';
 	import { goto } from '$app/navigation';
-	import { formatFirestoreTimestamp } from '$lib/utils/timeUtils';
 	import { db } from '$lib/firebase/client';
 	import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 	import { deleteUser, GoogleAuthProvider, reauthenticateWithPopup } from 'firebase/auth';
@@ -71,12 +70,7 @@
 			if ($user) {
 				const userDoc = await getDoc(doc(db, 'users', $user.uid));
 				if (userDoc.exists()) {
-					const rawData = userDoc.data();
-					userData = {
-						...rawData,
-						createdAt: rawData.createdAt ? formatFirestoreTimestamp(rawData.createdAt) : 'N/A',
-						updatedAt: rawData.updatedAt ? formatFirestoreTimestamp(rawData.updatedAt) : 'N/A'
-					};
+					userData = userDoc.data();
 					
 					// Initialize form fields
 					displayName = $user.displayName || '';
