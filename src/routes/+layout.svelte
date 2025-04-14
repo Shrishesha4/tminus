@@ -31,31 +31,9 @@
 </script>
 
 <div class="min-h-screen bg-gray-100 pb-16 md:pb-0 overflow-x-hidden">
-	<!-- Desktop header - only show on authenticated pages -->
+	<!-- Desktop header with navigation pill - only show on authenticated pages -->
 	{#if !isPublicPage}
-	<div class="fixed top-4 right-4 z-50 hidden md:block" transition:fade={{ duration: 200 }}>
-		<div class="bg-white/90 backdrop-blur-sm shadow-md rounded-full p-1">
-			{#if $isLoading}
-				<div class="animate-pulse h-10 w-10 bg-gray-200 rounded-full"></div>
-			{:else if $user}
-				<a href="/profile" class="block">
-					<img 
-						src={getProfileImageUrl($user)} 
-						alt="Profile" 
-						class="h-10 w-10 rounded-full border border-gray-200 hover:border-indigo-300 transition-all"
-					/>
-				</a>
-			{:else}
-				<a 
-					href="/login"
-					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-				>
-					Sign In
-				</a>
-			{/if}
-		</div>
-	</div>
-	<div class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 hidden md:flex" transition:fade={{ duration: 300 }}>
+	<div class="fixed top-4 left-0 right-0 z-50 hidden md:flex justify-center" transition:fade={{ duration: 300 }}>
 		<div class="bg-white/90 backdrop-blur-sm shadow-lg rounded-full px-6 py-3 flex items-center space-x-8">
 			<a 
 				href="/dashboard" 
@@ -107,6 +85,30 @@
 				</div>
 				<span class="text-xs mt-1">Analysis</span>
 			</a>
+		</div>
+	</div>
+	
+	<!-- Profile button - moved to right corner -->
+	<div class="fixed top-4 right-4 z-50 hidden md:block" transition:fade={{ duration: 200 }}>
+		<div class="bg-white/90 backdrop-blur-sm shadow-md rounded-full p-1">
+			{#if $isLoading}
+				<div class="animate-pulse h-10 w-10 bg-gray-200 rounded-full"></div>
+			{:else if $user}
+				<a href="/profile" class="block">
+					<img 
+						src={getProfileImageUrl($user)} 
+						alt="Profile" 
+						class="h-10 w-10 rounded-full border border-gray-200 hover:border-indigo-300 transition-all"
+					/>
+				</a>
+			{:else}
+				<a 
+					href="/login"
+					class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-full shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+				>
+					Sign In
+				</a>
+			{/if}
 		</div>
 	</div>
 	{/if}

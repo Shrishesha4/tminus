@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { user, isLoading } from '$lib/stores/authStore';
 	import { goto } from '$app/navigation';
-	import { calculateTimeRemaining, formatFirestoreTimestamp } from '$lib/utils/timeUtils';
+	import { calculateTimeRemaining } from '$lib/utils/timeUtils';
 	import { db } from '$lib/firebase/client';
 	import { doc, getDoc } from 'firebase/firestore';
 	import TimeSpheres from '$lib/components/TimeSpheres.svelte';
@@ -243,7 +243,7 @@
     <!-- Time remaining section -->
     <div class="mt-4 md:mt-10 mb-6">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h2 class="hidden md:block text-xl md:text-2xl font-semibold text-gray-800 mb-4 md:mb-0">Time Remaining</h2>
+        <h2 class="hidden md:block text-xl md:text-2xl font-semibold text-gray-800 mb-4 md:mb-0">{viewMode[0].toUpperCase() + viewMode.slice(1)} Remaining</h2>
         <div class="flex flex-wrap gap-2 w-full md:w-auto">
 			<button 
             class={`px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-medium transition-colors ${viewMode === 'days' ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
