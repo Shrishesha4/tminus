@@ -105,7 +105,7 @@
 			
 			<div class="mt-8 text-center">
 				<p class="text-sm text-gray-600">
-					By signing in, you agree to our <a href="#" class="text-indigo-600 hover:text-indigo-800">Terms of Service</a> and <a href="#" class="text-indigo-600 hover:text-indigo-800">Privacy Policy</a>.
+					By signing in, you agree to our <a href="/terms" class="text-indigo-600 hover:text-indigo-800">Terms of Service</a> and <a href="/privacy" class="text-indigo-600 hover:text-indigo-800">Privacy Policy</a>.
 				</p>
 			</div>
 		</div>
