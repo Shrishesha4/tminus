@@ -272,7 +272,7 @@
         </div>
       </div>
       
-      <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
+      <div class="">
         <TimeSpheres 
           {timeRemaining} 
           viewMode={viewMode === 'days' ? 'days' : viewMode === 'weeks' ? 'weeks' : viewMode === 'months' ? 'months' : 'years'} 
